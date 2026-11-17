@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Magic Library Finder</title>
+<style>
+:root{--bg:#0b0b0c;--panel:#131315;--line:#232327;--ink:#e6e2d8;--dim:#8d8a82;--faint:#5a5852;--gold:#c9a84c;--gold-d:#6f5d2a;--red:#b5524a}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
+header{position:sticky;top:0;z-index:5;background:rgba(11,11,12,.96);border-bottom:1px solid var(--line);padding:14px 14px 10px}
+h1{font:600 19px/1.1 Georgia,"Times New Roman",serif;letter-spacing:.14em;text-transform:uppercase;margin:0 0 2px}
+.sub{color:var(--faint);font-size:12px;margin-bottom:10px}
+.wrap{max-width:860px;margin:0 auto}
+.search{display:flex;gap:8px}
+.search input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:11px 12px;font-size:16px;border-radius:6px;outline:none}
+.search input:focus{border-color:var(--gold-d)}
+button,select{font:inherit;color:var(--ink)}
+.btn{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:0 12px;font-size:13px;color:var(--dim);cursor:pointer}
+.row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+select{flex:1;min-width:130px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px;font-size:13px;color:var(--dim)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 11px;font-size:12px;color:var(--dim);cursor:pointer;white-space:nowrap}
+.chip.on{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08)}
+.chip small{color:var(--faint);margin-left:4px}
+main{padding:10px 14px 60px}
+.meta{display:flex;justify-content:space-between;align-items:center;color:var(--faint);font-size:12px;margin:4px 0 10px;gap:10px;flex-wrap:wrap}
+.meta label{display:inline-flex;align-items:center;gap:5px;margin-left:10px;cursor:pointer}
+.meta input{accent-color:var(--gold)}
+.item{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:11px 12px;margin-bottom:6px;cursor:pointer}
+.item.open{border-color:#34343a}
+.top{display:flex;gap:10px;align-items:flex-start}
+.t{flex:1;min-width:0}
+.title{font-size:15px;color:var(--ink);overflow-wrap:anywhere}
+.creator{font-size:13px;color:var(--dim)}
+.loc{font-size:12px;color:var(--faint);margin-top:3px;overflow-wrap:anywhere}
+.loc.phys{color:var(--gold)}
+.badge{flex:0 0 auto;font-size:10px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:2px 6px;color:var(--dim)}
+.why{font-size:12px;color:var(--faint);margin-top:5px;overflow-wrap:anywhere}
+.why mark,.title mark,.creator mark{background:none;color:var(--gold)}
+.detail{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--dim)}
+.detail h4{margin:10px 0 5px;font:600 10px/1 inherit;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.detail h4:first-child{margin-top:0}
+.tags{display:flex;flex-wrap:wrap;gap:5px}
+.tag{border:1px solid var(--line);border-radius:4px;padding:3px 7px;font-size:12px;color:var(--ink);background:none;cursor:pointer}
+.tag.inf{border-style:dashed;color:var(--dim)}
+.link{background:none;border:0;padding:0;color:var(--gold);cursor:pointer;font-size:13px;text-align:left}
+.parts{margin:0;padding-left:18px}
+.parts li{margin:2px 0}
+.flag{color:var(--red);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.more{display:block;width:100%;margin-top:10px;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;color:var(--dim);cursor:pointer}
+.empty{color:var(--dim);padding:30px 0;text-align:center}
+.quick{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 16px}
+.note{color:var(--faint);font-size:12px;margin:14px 0 6px}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>Magic Library</h1>
+  <div class="sub" id="sub">Loading catalog…</div>
+  <div class="search">
+    <input id="q" type="search" placeholder="Effect, sleight, performer, slot…" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button class="btn" id="clear" type="button">Clear</button>
+  </div>
+  <div class="row">
+    <select id="where" aria-label="Where it is"></select>
+    <select id="format" aria-label="Format"></select>
+  </div>
+  <div class="chips" id="domains"></div>
+</div></header>
+<main><div class="wrap">
+  <div class="meta"><span id="count"></span>
+    <span><label><input type="checkbox" id="sets" checked> Collapse sets</label><label><input type="checkbox" id="junk"> Show fragments</label></span>
+  </div>
+  <div id="start"></div>
+  <div id="list"></div>
+</div></main>
+<script>
+(function(){
+"use strict";
+var F={id:0,title:1,creator:2,source:3,format:4,sub:5,topics:6,notes:7,inf:8,status:9,dom:10,copies:11,set:12};
+var SYN=[
+ ["acaan","any card at any number","card at any number","caan"],
+ ["ootw","out of this world"],
+ ["memorized deck","memorised deck","memdeck","mem deck","mnemonica","aronson stack","tamariz stack","stacked deck"],
+ ["torn and restored","t&r","tnr","torn & restored"],
+ ["double lift","dl","double turnover"],
+ ["cups and balls","chop cup","cups & balls"],
+ ["strolling","restaurant","walk-around","walkaround","table hopping"],
+ ["kids","children","family show"],
+ ["mentalism","mind reading","mindreading"],
+ ["coins across","three fly","coins through"],
+ ["gypsy thread","torn and restored thread","hindu thread"],
+ ["false shuffle","zarrow","false cut"],
+ ["cull","culling","spread cull"],
+ ["pass","shift","classic pass"],
+ ["book test","booktest"],
+ ["metal bending","spoon bending","fork bending"],
+ ["rubik","cube"],
+ ["phone","iphone","app"],
+ ["bizarre","dark magic","seance"],
+ ["gambling","cheating","false deal","second deal","bottom deal"]
+];
+var QUICK=["ACAAN","Triumph","Out of This World","Ambitious card","Memorized deck","Oil and water","Sandwich","Coins across","Matrix","Cups and balls","Gypsy thread","Torn and restored","Book test","Billets","Prediction","Metal bending","Strolling","Scripting","Comedy mentalism","Gambling"];
+var DOMS=["Cards","Mentalism","Coins","Memorized deck","Close-up classics","Stage & parlor","Theory & performance","Business & working pro","Gambling","Comedy","Bizarre","Kids & family","Phone & tech","Props & making","History","Periodicals"];
+var LIB=[],state={q:"",where:"",format:"",doms:{},sets:true,junk:false,open:null,limit:60};
+var $=function(id){return document.getElementById(id)};
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function rx(s){return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}
+function fold(s){return String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
+function save(){try{localStorage.setItem("mlf",JSON.stringify({q:state.q,where:state.where,format:state.format,doms:state.doms,sets:state.sets,junk:state.junk}))}catch(e){}}
+function load(){try{var s=JSON.parse(localStorage.getItem("mlf")||"null");if(s){for(var k in s)state[k]=s[k]}}catch(e){}}
+
+function whereOf(it){
+  if(it[F.source]==="Physical"){var s=it[F.sub]||"";var m=s.match(/^(Discgear \d)/);return m?m[1]:(s||"Physical")}
+  return it[F.source];
+}
+function locText(it){
+  if(it[F.source]==="Physical")return (it[F.sub]||"Physical").replace(" - "," · ");
+  if(it[F.source]==="Local Files")return "F:\\Magic\\"+(it[F.sub]||"");
+  return it[F.source]+" account";
+}
+function prep(){
+  LIB.forEach(function(it){
+    it.T=fold(it[F.title]);it.C=fold(it[F.creator]);it.P=fold(it[F.topics]);it.I=fold(it[F.inf]);
+    it.N=fold(it[F.notes]+" "+it[F.sub]);it.W=whereOf(it);it.K=it.T.replace(/^[^a-z0-9]+/,"");
+  });
+}
+function parse(q){
+  var s=" "+fold(q).replace(/\s+/g," ").trim()+" ",groups=[],phr=[];
+  s=s.replace(/"([^"]+)"/g,function(_,p){groups.push([p.trim()]);return " "});
+  SYN.forEach(function(g){g.forEach(function(p){phr.push([p,g])})});
+  phr.sort(function(a,b){return b[0].length-a[0].length});
+  phr.forEach(function(pg){
+    var re=new RegExp("(^|[^a-z0-9])"+rx(pg[0])+"(?![a-z0-9])");
+    if(re.test(s)){s=s.replace(re," ");groups.push(pg[1])}
+  });
+  s.split(/[\s,]+/).forEach(function(t){if(t.length>1&&["the","and","for","with","of","to","in","on","at","by","an"].indexOf(t)<0)groups.push([t])});
+  return groups.map(function(g){return{alts:g,re:new RegExp("(^|[^a-z0-9])("+g.map(rx).join("|")+")")}});
+}
+function score(it,groups,phrase){
+  var total=0;
+  for(var i=0;i<groups.length;i++){
+    var re=groups[i].re,b=0;
+    if(re.test(it.P))b=5; else if(re.test(it.T))b=4; else if(re.test(it.C))b=4; else if(re.test(it.I))b=2; else if(re.test(it.N))b=1;
+    if(!b)return 0;
+    if(b===5&&re.test(it.T))b=6;
+    total+=b;
+  }
+  if(phrase&&groups.length>1){if(it.T.indexOf(phrase)>=0)total+=3;if(it.P.indexOf(phrase)>=0)total+=3}
+  return total;
+}
+function run(){
+  var groups=parse(state.q),phrase=fold(state.q).trim(),doms=Object.keys(state.doms).filter(function(d){return state.doms[d]});
+  var base=[];
+  LIB.forEach(function(it){
+    if(!state.junk&&it[F.status]!=="ok")return;
+    if(state.format&&it[F.format]!==state.format)return;
+    if(state.where){
+      if(state.where==="Physical — anywhere"){if(it[F.source]!=="Physical")return}
+      else if(it.W!==state.where)return;
+    }
+    var s=groups.length?score(it,groups,phrase):1;
+    if(!s)return;
+    base.push({it:it,s:s});
+  });
+  var counts={};
+  base.forEach(function(x){x.it[F.dom].forEach(function(d){counts[d]=(counts[d]||0)+1})});
+  var res=base.filter(function(x){for(var i=0;i<doms.length;i++)if(x.it[F.dom].indexOf(doms[i])<0)return false;return true});
+  if(state.sets){
+    var seen={},out=[];
+    res.forEach(function(x){
+      var k=x.it[F.set]?x.it[F.sub]+"|"+fold(x.it[F.set]):null;
+      if(!k){out.push(x);return}
+      if(seen[k]){seen[k].parts.push(x.it);if(x.s>seen[k].s)seen[k].s=x.s}
+      else{seen[k]={it:x.it,s:x.s,parts:[x.it],set:x.it[F.set]};out.push(seen[k])}
+    });
+    res=out;
+  }
+  res.sort(function(a,b){return b.s-a.s||a.it.K.localeCompare(b.it.K,undefined,{numeric:true})});
+  return{res:res,counts:counts,groups:groups,total:base.length};
+}
+function hl(text,groups){
+  var out=esc(text);
+  if(!groups.length)return out;
+  var alts=[];groups.forEach(function(g){g.alts.forEach(function(a){alts.push(rx(esc(a)))})});
+  alts.sort(function(a,b){return b.length-a.length});
+  try{return out.replace(new RegExp("(^|[^A-Za-z0-9])("+alts.join("|")+")","gi"),"$1<mark>$2</mark>")}catch(e){return out}
+}
+function shortFormat(f){return f.replace("Video - ","").replace(" Effect/Tutorial","").replace(" / Physical","").replace(" / Publication","").replace(" / Misc","")}
+function tagBtns(str,cls){
+  return str.split(",").map(function(t){t=t.trim();return t?'<button type="button" class="tag '+cls+'" data-q="'+esc(t)+'">'+esc(t)+'</button>':""}).join("");
+}
+function card(x,groups){
+  var it=x.it,open=state.open===it[F.id],parts=x.parts&&x.parts.length>1?x.parts:null;
+  var title=parts?x.set:it[F.title];
+  var h='<div class="item'+(open?" open":"")+'" data-id="'+it[F.id]+'"><div class="top"><div class="t">';
+  h+='<div class="title">'+hl(title,groups)+(parts?' <span class="creator">· '+parts.length+' parts</span>':"")+'</div>';
+  if(it[F.creator])h+='<div class="creator">'+hl(it[F.creator],groups)+'</div>';
+  h+='<div class="loc'+(it[F.source]==="Physical"?" phys":"")+'">'+esc(locText(it))+'</div>';
+  var tags=[it[F.topics],it[F.inf]].filter(Boolean).join(", ");
+  if(!open&&tags)h+='<div class="why">'+hl(tags.length>150?tags.slice(0,150)+"…":tags,groups)+'</div>';
+  h+='</div><span class="badge">'+esc(shortFormat(it[F.format]))+'</span></div>';
+  if(open){
+    h+='<div class="detail">';
+    if(it[F.status]!=="ok")h+='<div class="flag">'+esc(it[F.status])+'</div>';
+    if(it[F.topics])h+='<h4>Tags</h4><div class="tags">'+tagBtns(it[F.topics],"")+'</div>';
+    if(it[F.inf])h+='<h4>Inferred — not verified against the content</h4><div class="tags">'+tagBtns(it[F.inf],"inf")+'</div>';
+    if(it[F.creator])h+='<h4>Creator</h4><button type="button" class="link" data-q="'+esc(it[F.creator].split(" / ")[0])+'">Everything by '+esc(it[F.creator].split(" / ")[0])+'</button>';
+    if(it[F.copies].length)h+='<h4>Also held</h4>'+esc(it[F.copies].join("; ").replace(/ - /g," · "));
+    if(parts)h+='<h4>Parts</h4><ol class="parts">'+parts.slice().sort(function(a,b){return a[F.title].localeCompare(b[F.title],undefined,{numeric:true})}).map(function(p){return"<li>"+esc(p[F.title])+"</li>"}).join("")+"</ol>";
+    if(it[F.notes])h+='<h4>Notes</h4>'+esc(it[F.notes]);
+    h+='<h4>Catalog</h4>#'+it[F.id]+' · '+esc(it[F.source])+' · '+esc(it[F.format]);
+    h+='</div>';
+  }
+  return h+'</div>';
+}
+function render(){
+  var r=run();
+  $("domains").innerHTML=DOMS.map(function(d){var n=r.counts[d]||0;return'<button type="button" class="chip'+(state.doms[d]?" on":"")+'" data-dom="'+esc(d)+'">'+esc(d)+'<small>'+n+'</small></button>'}).join("");
+  var idle=!state.q&&!state.where&&!state.format&&!Object.keys(state.doms).some(function(d){return state.doms[d]});
+  $("start").innerHTML=idle?'<div class="note">Common plots and topics</div><div class="quick">'+QUICK.map(function(q){return'<button type="button" class="chip" data-q="'+esc(q)+'">'+esc(q)+'</button>'}).join("")+'</div><div class="note">Everything, A to Z</div>':"";
+  $("count").textContent=r.res.length.toLocaleString()+(state.sets?" results":" items")+(r.res.length!==r.total?" (from "+r.total.toLocaleString()+" matches)":"");
+  var shown=r.res.slice(0,state.limit);
+  var h=shown.map(function(x){return card(x,r.groups)}).join("");
+  if(!r.res.length)h='<div class="empty">Nothing matches. Try fewer words, or turn on “Show fragments”.</div>';
+  if(r.res.length>state.limit)h+='<button type="button" class="more" id="more">Show more ('+(r.res.length-state.limit).toLocaleString()+' left)</button>';
+  $("list").innerHTML=h;
+  save();
+}
+function setQ(q){state.q=q;$("q").value=q;state.limit=60;state.open=null;render();window.scrollTo(0,0)}
+function init(){
+  prep();load();
+  var wheres=["Physical — anywhere","Discgear 1","Discgear 2","Loose DVD Box","Bookshelf","Local Files","Penguin Magic","Vanishing Inc","Theory11","Ellusionist"];
+  $("where").innerHTML='<option value="">Anywhere</option>'+wheres.map(function(w){return'<option>'+esc(w)+'</option>'}).join("");
+  var fmts={};LIB.forEach(function(it){fmts[it[F.format]]=1});
+  $("format").innerHTML='<option value="">Any format</option>'+Object.keys(fmts).sort().map(function(f){return'<option>'+esc(f)+'</option>'}).join("");
+  $("q").value=state.q;$("where").value=state.where;$("format").value=state.format;$("sets").checked=state.sets;$("junk").checked=state.junk;
+  var ok=LIB.filter(function(it){return it[F.status]==="ok"}).length;
+  $("sub").textContent=LIB.length.toLocaleString()+" items · "+ok.toLocaleString()+" titles, "+(LIB.length-ok)+" flagged fragments";
+  var timer;
+  $("q").addEventListener("input",function(e){clearTimeout(timer);timer=setTimeout(function(){state.q=e.target.value;state.limit=60;state.open=null;render()},120)});
+  $("clear").addEventListener("click",function(){state.where="";state.format="";state.doms={};$("where").value="";$("format").value="";setQ("")});
+  $("where").addEventListener("change",function(e){state.where=e.target.value;state.limit=60;render()});
+  $("format").addEventListener("change",function(e){state.format=e.target.value;state.limit=60;render()});
+  $("sets").addEventListener("change",function(e){state.sets=e.target.checked;render()});
+  $("junk").addEventListener("change",function(e){state.junk=e.target.checked;render()});
+  $("domains").addEventListener("click",function(e){var b=e.target.closest("[data-dom]");if(!b)return;var d=b.getAttribute("data-dom");state.doms[d]=!state.doms[d];state.limit=60;render()});
+  document.querySelector("main").addEventListener("click",function(e){
+    var q=e.target.closest("[data-q]");if(q){e.stopPropagation();setQ(q.getAttribute("data-q"));return}
+    if(e.target.id==="more"){state.limit+=120;render();return}
+    var c=e.target.closest(".item");if(c){var id=+c.getAttribute("data-id");state.open=state.open===id?null:id;render()}
+  });
+  render();
+}
+fetch("library.json").then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(d){LIB=d;init()}).catch(function(){$("sub").textContent="Could not load library.json — it needs to sit next to this page."});
+})();
+</script>
+</body>
+</html>
